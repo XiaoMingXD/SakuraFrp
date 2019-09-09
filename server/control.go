@@ -32,13 +32,13 @@ import (
 	"github.com/fatedier/frp/utils/net"
 	frpNet "github.com/fatedier/frp/utils/net"
 	"github.com/fatedier/frp/utils/version"
+	"golang.org/x/time/rate"
 
 	"github.com/fatedier/golib/control/shutdown"
 	"github.com/fatedier/golib/crypto"
 	"github.com/fatedier/golib/errors"
 
 	"github.com/fatedier/frp/extend/api"
-	"github.com/fatedier/frp/extend/cumu"
 	"github.com/fatedier/frp/extend/limit"
 )
 
@@ -133,11 +133,14 @@ type Control struct {
 	managerShutdown *shutdown.Shutdown
 	allShutdown     *shutdown.Shutdown
 
+	inLimit  *rate.Limiter
+	outLimit *rate.Limiter
+
 	mu sync.RWMutex
 }
 
 func NewControl(rc *controller.ResourceController, pxyManager *proxy.ProxyManager,
-	statsCollector stats.Collector, ctlConn net.Conn, loginMsg *msg.Login) *Control {
+	statsCollector stats.Collector, ctlConn net.Conn, loginMsg *msg.Login, inLimit, outLimit uint64) *Control {
 
 	return &Control{
 		rc:              rc,
@@ -158,6 +161,8 @@ func NewControl(rc *controller.ResourceController, pxyManager *proxy.ProxyManage
 		writerShutdown:  shutdown.New(),
 		managerShutdown: shutdown.New(),
 		allShutdown:     shutdown.New(),
+		inLimit:         rate.NewLimiter(rate.Limit(inLimit*limit.KB), limit.BurstLimit),
+		outLimit:        rate.NewLimiter(rate.Limit(outLimit*limit.KB), limit.BurstLimit),
 	}
 }
 
@@ -448,33 +453,12 @@ func (ctl *Control) RegisterProxy(pxyMsg *msg.NewProxy) (remoteAddr string, err 
 			return remoteAddr, fmt.Errorf("invalid proxy configuration")
 		}
 
-		in, out, err := s.GetProxyLimit(ctl.loginMsg.User, pxyConf.GetBaseInfo(), nowTime, g.GlbServerCfg.ApiToken)
-		if err != nil {
-			return remoteAddr, err
-		}
-
-		// 测试用
-		ctl.conn.Debug("client speed limit: %dKB/s (Inbound) / %dKB/s (Outbound)", in, out)
-
 		workConn = func() (frpNet.Conn, error) {
 			fconn, err := ctl.GetWorkConn()
 			if err != nil {
 				return nil, err
 			}
-			cumuConn := cumu.NewCumuConn(fconn)
-			go func(cc *cumu.Conn) {
-				var oldIn, oldOut uint64
-				for {
-					time.Sleep(1 * time.Second)
-					in, out := cc.InCount(), cc.OutCount()
-					if (oldIn == in) && (oldOut == out) {
-						continue
-					}
-					fmt.Printf("In/Out: %d Byte, %d Byte\n", in, out)
-					oldIn, oldOut = in, out
-				}
-			}(cumuConn)
-			return limit.NewLimitConn(in*limit.KB, out*limit.KB, cumuConn), nil
+			return limit.NewLimitConnWithBucket(fconn, ctl.outLimit, ctl.inLimit), nil
 		}
 	}
 

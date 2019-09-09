@@ -4,6 +4,7 @@ import (
 	"io"
 
 	frpNet "github.com/fatedier/frp/utils/net"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -16,7 +17,7 @@ const (
 	EB
 )
 
-const burstLimit = 1024 * 1024 * 1024
+const BurstLimit = 1024 * 1024 * 1024
 
 type Conn struct {
 	frpNet.Conn
@@ -26,11 +27,17 @@ type Conn struct {
 }
 
 func NewLimitConn(maxread, maxwrite uint64, c frpNet.Conn) Conn {
-	// 这里不知道为什么要 49 才能对的上真实速度
-	// 49 是根据 wget 速度来取的，测试了 512、1024、2048、4096、8192 等多种速度下都很准确
 	return Conn{
 		lr:   NewReaderWithLimit(c, maxread),
 		lw:   NewWriterWithLimit(c, maxwrite),
+		Conn: c,
+	}
+}
+
+func NewLimitConnWithBucket(c frpNet.Conn, rBucket, wBucket *rate.Limiter) Conn {
+	return Conn{
+		lr:   NewReaderWithLimitWithBucket(c, rBucket),
+		lw:   NewWriterWithLimitWithBucket(c, wBucket),
 		Conn: c,
 	}
 }

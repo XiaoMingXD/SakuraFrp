@@ -246,7 +246,7 @@ func HandleUserTcpConnection(pxy Proxy, userConn frpNet.Conn, statsCollector sta
 			}
 		}
 	}(cc, endSig)
-	frpIo.Join(local, userConn)
+	frpIo.Join(local, cc)
 	statsCollector.Mark(stats.TypeCloseConnection, &stats.CloseConnectionPayload{ProxyName: pxy.GetName()})
 	endSig <- 1
 	pxy.Debug("join connections closed")

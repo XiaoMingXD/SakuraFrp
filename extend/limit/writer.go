@@ -31,7 +31,17 @@ func NewWriterWithLimit(w io.Writer, speed uint64) *Writer {
 		ctx: context.Background(),
 		mux: sync.Mutex{},
 	}
+	ww.limiter = rate.NewLimiter(rate.Limit(speed), BurstLimit)
 	ww.SetRateLimit(speed)
+	return ww
+}
+func NewWriterWithLimitWithBucket(w io.Writer, bucket *rate.Limiter) *Writer {
+	ww := &Writer{
+		w:       w,
+		ctx:     context.Background(),
+		mux:     sync.Mutex{},
+		limiter: bucket,
+	}
 	return ww
 }
 
@@ -40,8 +50,8 @@ func (s *Writer) SetRateLimit(bytesPerSec uint64) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	s.limiter = rate.NewLimiter(rate.Limit(bytesPerSec), burstLimit)
-	s.limiter.AllowN(time.Now(), burstLimit) // spend initial burst
+	// s.limiter = rate.NewLimiter(rate.Limit(bytesPerSec), burstLimit)
+	s.limiter.AllowN(time.Now(), BurstLimit) // spend initial burst
 }
 
 // Write writes bytes from p.

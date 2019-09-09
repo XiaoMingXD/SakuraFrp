@@ -371,6 +371,11 @@ func (svr *Service) RegisterControl(ctlConn frpNet.Conn, loginMsg *msg.Login) (e
 		return
 	}
 
+	var (
+		inLimit  uint64
+		outLimit uint64
+	)
+
 	if g.GlbServerCfg.EnableApi {
 
 		nowTime := time.Now().Unix()
@@ -397,6 +402,12 @@ func (svr *Service) RegisterControl(ctlConn frpNet.Conn, loginMsg *msg.Login) (e
 		if !valid {
 			return fmt.Errorf("authorization failed")
 		}
+
+		inLimit, outLimit, err = s.GetProxyLimit(loginMsg.User, nowTime, g.GlbServerCfg.ApiToken)
+		if err != nil {
+			return err
+		}
+		ctlConn.Debug("%s client speed limit: %dKB/s (Inbound) / %dKB/s (Outbound)", loginMsg.User, inLimit, outLimit)
 	}
 
 	// If client's RunId is empty, it's a new client, we just create a new controller.
@@ -408,7 +419,7 @@ func (svr *Service) RegisterControl(ctlConn frpNet.Conn, loginMsg *msg.Login) (e
 		}
 	}
 
-	ctl := NewControl(svr.rc, svr.pxyManager, svr.statsCollector, ctlConn, loginMsg)
+	ctl := NewControl(svr.rc, svr.pxyManager, svr.statsCollector, ctlConn, loginMsg, inLimit, outLimit)
 
 	if oldCtl := svr.ctlManager.Add(loginMsg.RunId, ctl); oldCtl != nil {
 		oldCtl.allShutdown.WaitDone()

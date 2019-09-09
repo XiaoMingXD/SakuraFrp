@@ -8,8 +8,6 @@ import (
 	"net/url"
 	"strconv"
 
-	// "github.com/fatedier/frp/extend/limit"
-	"github.com/fatedier/frp/models/config"
 	"github.com/fatedier/frp/models/msg"
 )
 
@@ -147,7 +145,7 @@ func (s Service) CheckProxy(user string, pMsg *msg.NewProxy, timestamp int64, st
 }
 
 // GetProxyLimit 获取隧道限速信息
-func (s Service) GetProxyLimit(user string, pxyConf *config.BaseProxyConf, timestamp int64, stk string) (inLimit, outLimit uint64, err error) {
+func (s Service) GetProxyLimit(user string, timestamp int64, stk string) (inLimit, outLimit uint64, err error) {
 	// 这部分就照之前的搬过去了，能跑就行x
 	values := url.Values{}
 	values.Set("action", "getlimit")
@@ -180,7 +178,7 @@ func (s Service) GetProxyLimit(user string, pxyConf *config.BaseProxyConf, times
 	if err = json.Unmarshal(body, response); err != nil {
 		return 0, 0, err
 	}
-	
+
 	// 这里直接返回 uint64 应该问题不大
 	return response.MaxIn, response.MaxOut, nil
 }
