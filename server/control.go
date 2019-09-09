@@ -38,6 +38,7 @@ import (
 	"github.com/fatedier/golib/errors"
 
 	"github.com/fatedier/frp/extend/api"
+	"github.com/fatedier/frp/extend/cumu"
 	"github.com/fatedier/frp/extend/limit"
 )
 
@@ -451,16 +452,29 @@ func (ctl *Control) RegisterProxy(pxyMsg *msg.NewProxy) (remoteAddr string, err 
 		if err != nil {
 			return remoteAddr, err
 		}
-		
+
 		// 测试用
 		ctl.conn.Debug("client speed limit: %dKB/s (Inbound) / %dKB/s (Outbound)", in, out)
-		
+
 		workConn = func() (frpNet.Conn, error) {
 			fconn, err := ctl.GetWorkConn()
 			if err != nil {
 				return nil, err
 			}
-			return limit.NewLimitConn(in, out, fconn), nil
+			cumuConn := cumu.NewCumuConn(fconn)
+			go func(cc *cumu.Conn) {
+				var oldIn, oldOut uint64
+				for {
+					time.Sleep(1 * time.Second)
+					in, out := cc.InCount(), cc.OutCount()
+					if (oldIn == in) && (oldOut == out) {
+						continue
+					}
+					fmt.Printf("In/Out: %d Byte, %d Byte\n", in, out)
+					oldIn, oldOut = in, out
+				}
+			}(cumuConn)
+			return limit.NewLimitConn(in*limit.KB, out*limit.KB, cumuConn), nil
 		}
 	}
 
