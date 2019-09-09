@@ -43,7 +43,6 @@ func NewReaderWithLimitWithBucket(r io.Reader, bucket *rate.Limiter) *Reader {
 		mux:     sync.Mutex{},
 		limiter: bucket,
 	}
-	rr.limiter.AllowN(time.Now(), BurstLimit)
 	return rr
 }
 
