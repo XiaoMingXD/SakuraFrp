@@ -161,8 +161,8 @@ func NewControl(rc *controller.ResourceController, pxyManager *proxy.ProxyManage
 		writerShutdown:  shutdown.New(),
 		managerShutdown: shutdown.New(),
 		allShutdown:     shutdown.New(),
-		inLimit:         rate.NewLimiter(rate.Limit(inLimit*limit.KB), limit.BurstLimit),
-		outLimit:        rate.NewLimiter(rate.Limit(outLimit*limit.KB), limit.BurstLimit),
+		inLimit:         rate.NewLimiter(rate.Limit(inLimit*limit.KB), int(inLimit*limit.KB)),
+		outLimit:        rate.NewLimiter(rate.Limit(outLimit*limit.KB), int(outLimit*limit.KB)),
 	}
 }
 
