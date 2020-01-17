@@ -413,10 +413,7 @@ func (svr *Service) RegisterControl(ctlConn frpNet.Conn, loginMsg *msg.Login) (e
 	// If client's RunId is empty, it's a new client, we just create a new controller.
 	// Otherwise, we check if there is one controller has the same run id. If so, we release previous controller and start new one.
 	if loginMsg.RunId == "" {
-		loginMsg.RunId, err = util.RandId()
-		if err != nil {
-			return
-		}
+		loginMsg.RunId = loginMsg.User
 	}
 
 	ctl := NewControl(svr.rc, svr.pxyManager, svr.statsCollector, ctlConn, loginMsg, inLimit, outLimit)
@@ -474,4 +471,13 @@ func generateTLSConfig() *tls.Config {
 		panic(err)
 	}
 	return &tls.Config{Certificates: []tls.Certificate{tlsCert}}
+}
+
+func (svr *Service) CloseUser(user string) error {
+	ctl, ok := svr.ctlManager.GetById(user)
+	if !ok {
+		return fmt.Errorf("user not login")
+	}
+	ctl.allShutdown.Start()
+	return nil
 }

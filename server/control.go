@@ -32,7 +32,6 @@ import (
 	"github.com/fatedier/frp/utils/net"
 	frpNet "github.com/fatedier/frp/utils/net"
 	"github.com/fatedier/frp/utils/version"
-	"golang.org/x/time/rate"
 
 	"github.com/fatedier/golib/control/shutdown"
 	"github.com/fatedier/golib/crypto"
@@ -133,8 +132,8 @@ type Control struct {
 	managerShutdown *shutdown.Shutdown
 	allShutdown     *shutdown.Shutdown
 
-	inLimit  *rate.Limiter
-	outLimit *rate.Limiter
+	inLimit  uint64
+	outLimit uint64
 
 	mu sync.RWMutex
 }
@@ -161,8 +160,8 @@ func NewControl(rc *controller.ResourceController, pxyManager *proxy.ProxyManage
 		writerShutdown:  shutdown.New(),
 		managerShutdown: shutdown.New(),
 		allShutdown:     shutdown.New(),
-		inLimit:         rate.NewLimiter(rate.Limit(inLimit*limit.KB), int(inLimit*limit.KB)),
-		outLimit:        rate.NewLimiter(rate.Limit(outLimit*limit.KB), int(outLimit*limit.KB)),
+		inLimit:         inLimit,  //rate.NewLimiter(rate.Limit(inLimit*limit.KB), int(inLimit*limit.KB)),
+		outLimit:        outLimit, //rate.NewLimiter(rate.Limit(outLimit*limit.KB), int(outLimit*limit.KB)),
 	}
 }
 
@@ -458,7 +457,7 @@ func (ctl *Control) RegisterProxy(pxyMsg *msg.NewProxy) (remoteAddr string, err 
 			if err != nil {
 				return nil, err
 			}
-			return limit.NewLimitConnWithBucket(fconn, ctl.outLimit, ctl.inLimit), nil
+			return limit.NewLimitConn(ctl.inLimit, ctl.outLimit, fconn), nil
 		}
 	}
 

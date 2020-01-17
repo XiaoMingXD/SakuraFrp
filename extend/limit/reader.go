@@ -31,18 +31,7 @@ func NewReaderWithLimit(r io.Reader, speed uint64) *Reader {
 		ctx: context.Background(),
 		mux: sync.Mutex{},
 	}
-	rr.limiter = rate.NewLimiter(rate.Limit(speed), BurstLimit)
 	rr.SetRateLimit(speed)
-	return rr
-}
-
-func NewReaderWithLimitWithBucket(r io.Reader, bucket *rate.Limiter) *Reader {
-	rr := &Reader{
-		r:       r,
-		ctx:     context.Background(),
-		mux:     sync.Mutex{},
-		limiter: bucket,
-	}
 	return rr
 }
 
@@ -51,8 +40,8 @@ func (s *Reader) SetRateLimit(bytesPerSec uint64) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	// s.limiter = rate.NewLimiter(rate.Limit(bytesPerSec), burstLimit)
-	s.limiter.AllowN(time.Now(), BurstLimit) // spend initial burst
+	s.limiter = rate.NewLimiter(rate.Limit(bytesPerSec), burstLimit)
+	s.limiter.AllowN(time.Now(), burstLimit) // spend initial burst
 }
 
 // Read reads bytes into p.
