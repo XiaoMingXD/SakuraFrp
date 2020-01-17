@@ -132,11 +132,14 @@ type Control struct {
 	managerShutdown *shutdown.Shutdown
 	allShutdown     *shutdown.Shutdown
 
+	inLimit  uint64
+	outLimit uint64
+
 	mu sync.RWMutex
 }
 
 func NewControl(rc *controller.ResourceController, pxyManager *proxy.ProxyManager,
-	statsCollector stats.Collector, ctlConn net.Conn, loginMsg *msg.Login) *Control {
+	statsCollector stats.Collector, ctlConn net.Conn, loginMsg *msg.Login, inLimit, outLimit uint64) *Control {
 
 	return &Control{
 		rc:              rc,
@@ -157,6 +160,8 @@ func NewControl(rc *controller.ResourceController, pxyManager *proxy.ProxyManage
 		writerShutdown:  shutdown.New(),
 		managerShutdown: shutdown.New(),
 		allShutdown:     shutdown.New(),
+		inLimit:         inLimit,  //rate.NewLimiter(rate.Limit(inLimit*limit.KB), int(inLimit*limit.KB)),
+		outLimit:        outLimit, //rate.NewLimiter(rate.Limit(outLimit*limit.KB), int(outLimit*limit.KB)),
 	}
 }
 
@@ -447,20 +452,12 @@ func (ctl *Control) RegisterProxy(pxyMsg *msg.NewProxy) (remoteAddr string, err 
 			return remoteAddr, fmt.Errorf("invalid proxy configuration")
 		}
 
-		in, out, err := s.GetProxyLimit(ctl.loginMsg.User, pxyConf.GetBaseInfo(), nowTime, g.GlbServerCfg.ApiToken)
-		if err != nil {
-			return remoteAddr, err
-		}
-		
-		// 测试用
-		ctl.conn.Debug("client speed limit: %dKB/s (Inbound) / %dKB/s (Outbound)", in, out)
-		
 		workConn = func() (frpNet.Conn, error) {
 			fconn, err := ctl.GetWorkConn()
 			if err != nil {
 				return nil, err
 			}
-			return limit.NewLimitConn(in, out, fconn), nil
+			return limit.NewLimitConn(ctl.inLimit, ctl.outLimit, fconn), nil
 		}
 	}
 

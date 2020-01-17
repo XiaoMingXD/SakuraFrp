@@ -93,7 +93,7 @@ func getServiceUnavailablePageContent() []byte {
 
 func notFoundResponse() *http.Response {
 	header := make(http.Header)
-	header.Set("server", "frp/" + version.Full() + "-sakurapanel")
+	header.Set("server", "frp/"+version.Full()+"-sakurapanel")
 	header.Set("Content-Type", "text/html")
 
 	res := &http.Response{
