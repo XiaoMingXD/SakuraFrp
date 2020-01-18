@@ -20,6 +20,7 @@ import (
 	"runtime/debug"
 	"sync"
 	"time"
+	"strings"
 
 	"github.com/fatedier/frp/g"
 	"github.com/fatedier/frp/models/config"
