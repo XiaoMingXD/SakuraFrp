@@ -478,7 +478,7 @@ func generateTLSConfig() *tls.Config {
 }
 
 func (svr *Service) CloseUser(user string) error {
-	ctl, ok := svr.ctlManager.GetById(user)
+	ctl, ok := svr.ctlManager.SearchById(user)
 	if !ok {
 		return fmt.Errorf("user not login")
 	}
