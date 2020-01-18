@@ -413,7 +413,11 @@ func (svr *Service) RegisterControl(ctlConn frpNet.Conn, loginMsg *msg.Login) (e
 	// If client's RunId is empty, it's a new client, we just create a new controller.
 	// Otherwise, we check if there is one controller has the same run id. If so, we release previous controller and start new one.
 	if loginMsg.RunId == "" {
-		loginMsg.RunId = loginMsg.User
+		randid, err := util.RandId()
+		if err != nil {
+			return err
+		}
+		loginMsg.RunId = loginMsg.User + "-" + randid
 	}
 
 	ctl := NewControl(svr.rc, svr.pxyManager, svr.statsCollector, ctlConn, loginMsg, inLimit, outLimit)
