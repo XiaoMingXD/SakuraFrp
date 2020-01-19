@@ -268,9 +268,11 @@ func NewProxyManager() *ProxyManager {
 func (pm *ProxyManager) Add(name string, pxy Proxy) error {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
-	if _, ok := pm.pxys[name]; ok {
+	
+	// 这里的判断没什么必要了，因为前面已经经过鉴权，如果出现两个相同名字的代理就用新的代替旧的
+	/*if _, ok := pm.pxys[name]; ok {
 		return fmt.Errorf("proxy name [%s] is already in use", name)
-	}
+	}*/
 
 	pm.pxys[name] = pxy
 	return nil
